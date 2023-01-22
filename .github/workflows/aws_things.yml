@@ -1,0 +1,39 @@
+name: AWS-thing
+
+# Controls when the workflow will run
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - cloudformation_code.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - cloudformation_code.yml
+
+permissions:  
+  id-token: write
+  contents: read
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  deploy-aws-code:
+    name: AWS deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - name: Configure AWS credentials 
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-deploy-role
+          aws-region: eu-west-1 
+          role-duration-seconds: 1200
+
+      - name: List S3 buckets to test credentials
+        run: aws s3 ls group4-cf-bucket-1
+      - name: Update stack
+        run: aws cloudformation update-stack --stack-name g4cfteststack --template-body file://$GITHUB_WORKSPACE/cloudformation_code.yml --region eu-west-1

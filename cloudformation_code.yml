@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: group4-cf-bucket-1
+      NotificationConfiguration:
+        LambdaConfigurations:
+        - Event: s3:ObjectCreated:*
+          Function: !GetAtt cfg4testlambda.Arn
+
+  cfg4testlambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: cfc4testlambda
+      Code:
+        S3Bucket: cf-g4-test-bucket
+        S3Key: group4_latest_lambda.zip
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      MemorySize: 128
+      Timeout: 20
+      Role: arn:aws:iam::948243690849:role/lambda-execution-role
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-09ddd305daee3cb89
+        SubnetIds:
+          - subnet-07ed3e4e6dd0632e0
+          - subnet-0ec1bb10a4f1c8bc2
+      Environment:
+        Variables:
+          dbname: group4_cafe
+          host: redshiftcluster-0tpro3jveqq0.ccdyb7vgmw8g.eu-west-1.redshift.amazonaws.com
+          user: group4
+          password: Redshift-delon8-group4-778688ds
+          port: '5439'
+      Layers:
+        - 'arn:aws:lambda:eu-west-1:336392948345:layer:AWSSDKPandas-Python39:2'
+        - 'arn:aws:lambda:eu-west-1:948243690849:layer:daniel_psycopg2:2'
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref cfg4testlambda
+      Principal: s3.amazonaws.com
+      SourceAccount: 948243690849
+      SourceArn: !Sub "arn:aws:s3:::${MyBucket}"
+
+  # EC2Instance:
+  #   Type: AWS::EC2::Instance
+  #   Properties:
+  #     AvailabilityZone: eu-west-1a
+  #     ImageId: ami-0fe0b2cf0e1f25c8a
+  #     InstanceType: t2.micro
+  #     KeyName: group4kp
+  #     SecurityGroupIds:
+  #       - sg-06bd2953ac4510386
+  #       - sg-09ddd305daee3cb89
+  #     SubnetId: subnet-07ed3e4e6dd0632e0
+  #     IamInstanceProfile: grafana-role
+  #     UserData: !Base64 |
+  #       Content-Type: multipart/mixed; boundary="//"
+  #       MIME-Version: 1.0
+  #       --//
+  #       Content-Type: text/cloud-config; charset="us-ascii"
+  #       MIME-Version: 1.0
+  #       Content-Transfer-Encoding: 7bit
+  #       Content-Disposition: attachment; filename="cloud-config.txt"
+  #       #cloud-config
+  #       cloud_final_modules:
+  #       - [scripts-user, always]
+  #       --//
+  #       Content-Type: text/x-shellscript; charset="us-ascii"
+  #       MIME-Version: 1.0
+  #       Content-Transfer-Encoding: 7bit
+  #       Content-Disposition: attachment; filename="userdata.txt"
+        
+  #       #!/bin/bash
+  #       sudo amazon-linux-extras install docker -y
+  #       sudo service docker start
+  #       sudo usermod -a -G docker ec2-user
+  #       sudo chkconfig docker on
+  #       docker volume create grafana-storage
+  #       sudo docker run -d -p 80:3000 --rm --volume grafana-storage:/var/lib/grafana grafana/grafana
+  #       --//--
